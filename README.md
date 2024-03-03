@@ -27,11 +27,7 @@ Tools > Debug Command Executor > Window
 
 ## Note
 
-- UNITY_EDITOR or DEVELOPMENT_BUILD only.
-
-## ToDo
-
-- [ ] Autocomplete
+- `UNITY_EDITOR` or `DEVELOPMENT_BUILD` only.
 
 ## Target Environment
 

@@ -17,14 +17,18 @@ namespace DebugCommandExecutor.Editor
         }
 
         private const int HistoryMax = 30;
+        private const int AutocompleteMinLength = 2;
         private static string EditorPrefsHistoryKey => $"DebugCommand.{Application.productName}";
 
         private List<string> _history;
         private int _recipient;
-        private string _message;
+        private string _text;
         private bool _refocusNextFrame;
         private int _focusHistory = -1;
+        private int _focusAutocomplete = -1;
+        private Vector2 _autocompleteScrollPosition;
         private Vector2 _historyScrollPosition;
+        private IReadOnlyList<DebugCommand.DebugMethod> _autoCompleteMethods = new List<DebugCommand.DebugMethod>();
 
         protected void OnEnable()
         {
@@ -48,7 +52,7 @@ namespace DebugCommandExecutor.Editor
             var refocus = false;
 
             {
-                if (_refocusNextFrame)
+                if (_refocusNextFrame && Event.current.type == EventType.Repaint)
                 {
                     _refocusNextFrame = false;
                     refocus = true;
@@ -67,26 +71,44 @@ namespace DebugCommandExecutor.Editor
 
                 if (e.type == EventType.KeyDown && e.keyCode == KeyCode.UpArrow)
                 {
+                    e.Use();
+
                     if (_focusHistory + 1 < _history.Count)
                     {
                         _focusHistory += 1;
-
-                        GUI.FocusControl(null);
-                        _message = _history[_focusHistory];
-                        _refocusNextFrame = true;
                     }
+
+                    GUI.FocusControl(null);
+                    _text = _history[_focusHistory];
+                    _refocusNextFrame = true;
                 }
 
                 if (e.type == EventType.KeyDown && e.keyCode == KeyCode.DownArrow)
                 {
+                    e.Use();
+
                     if (_focusHistory - 1 >= 0)
                     {
                         _focusHistory -= 1;
-
-                        GUI.FocusControl(null);
-                        _message = _history[_focusHistory];
-                        _refocusNextFrame = true;
                     }
+
+                    GUI.FocusControl(null);
+                    _text = _history[_focusHistory];
+                    _refocusNextFrame = true;
+                }
+
+                if (e.type == EventType.KeyDown && e.keyCode == KeyCode.Tab)
+                {
+                    e.Use();
+
+                    if (_focusAutocomplete + 1 < _autoCompleteMethods.Count)
+                    {
+                        _focusAutocomplete += 1;
+                    }
+
+                    GUI.FocusControl(null);
+                    _text = _autoCompleteMethods[_focusAutocomplete].MethodInfo.Name;
+                    _refocusNextFrame = true;
                 }
             }
 
@@ -100,11 +122,17 @@ namespace DebugCommandExecutor.Editor
 
                     if (string.IsNullOrEmpty(validate))
                     {
-                        var prevMessage = _message;
+                        var prevText = _text;
                         GUI.SetNextControlName("MessageTextField");
-                        _message = EditorGUILayout.TextField(_message);
+                        _text = EditorGUILayout.TextField(_text);
 
-                        if (_message != prevMessage) _focusHistory = -1;
+                        if (_text != prevText)
+                        {
+                            _focusHistory = -1;
+                            _focusAutocomplete = -1;
+                            _autoCompleteMethods = UpdateAutoComplete(_text);
+                            _focusAutocomplete = -1;
+                        }
                     }
                     else
                     {
@@ -118,22 +146,57 @@ namespace DebugCommandExecutor.Editor
 
                 EditorGUILayout.Space();
 
-                using (var scrollView = new EditorGUILayout.ScrollViewScope(_historyScrollPosition))
+                if (_autoCompleteMethods.Count > 0)
                 {
-                    EditorGUILayout.LabelField("History");
-                    for (var i = 0; i < _history.Count; i++)
+                    // AutoComplete
+                    EditorGUILayout.LabelField("Autocomplete");
+                    using (var scrollView = new EditorGUILayout.ScrollViewScope(_autocompleteScrollPosition))
                     {
-                        var history = _history[i];
-                        if (GUILayout.Button(history))
+                        for (var i = 0; i < _autoCompleteMethods.Count; i++)
                         {
-                            GUI.FocusControl(null);
-                            _message = history;
-                            _refocusNextFrame = true;
-                            _focusHistory = i;
-                        }
-                    }
+                            var autoCompleteMethod = _autoCompleteMethods[i];
+                            var methodName = autoCompleteMethod.MethodInfo.Name;
+                            var parameterInfos = autoCompleteMethod.MethodInfo.GetParameters();
+                            var text = parameterInfos.Length == 0
+                                ? methodName
+                                : $"{methodName}({string.Join(", ", parameterInfos.Select(x => $"{x.ParameterType.GetFriendlyName()} {x.Name}"))})";
 
-                    _historyScrollPosition = scrollView.scrollPosition;
+                            if (!string.IsNullOrEmpty(autoCompleteMethod.Attribute.Summary))
+                            {
+                                text += $" - {autoCompleteMethod.Attribute.Summary}";
+                            }
+
+                            if (GUILayout.Button(text))
+                            {
+                                GUI.FocusControl(null);
+                                _text = methodName;
+                                _refocusNextFrame = true;
+                            }
+                        }
+
+                        _autocompleteScrollPosition = scrollView.scrollPosition;
+                    }
+                }
+                else
+                {
+                    // History
+                    EditorGUILayout.LabelField("History");
+                    using (var scrollView = new EditorGUILayout.ScrollViewScope(_historyScrollPosition))
+                    {
+                        for (var i = 0; i < _history.Count; i++)
+                        {
+                            var history = _history[i];
+                            if (GUILayout.Button(history))
+                            {
+                                GUI.FocusControl(null);
+                                _text = history;
+                                _refocusNextFrame = true;
+                                _focusHistory = i;
+                            }
+                        }
+
+                        _historyScrollPosition = scrollView.scrollPosition;
+                    }
                 }
             }
 
@@ -150,6 +213,22 @@ namespace DebugCommandExecutor.Editor
             }
         }
 
+        private static IReadOnlyList<DebugCommand.DebugMethod> UpdateAutoComplete(string text)
+        {
+            var methodName = text.Split(' ')[0].Trim().ToLowerInvariant();
+            Debug.Log($"{methodName}");
+
+            if (methodName.Length < AutocompleteMinLength)
+            {
+                return new List<DebugCommand.DebugMethod>();
+            }
+
+            return DebugCommand.DebugMethods
+                .Where(x => x.Key.StartsWith(methodName))
+                .Select(x => x.Value)
+                .ToList();
+        }
+
         private string Validate()
         {
             if (_recipient == 0)
@@ -164,7 +243,7 @@ namespace DebugCommandExecutor.Editor
 
         private void Send()
         {
-            var message = _message.Trim();
+            var message = _text.Trim();
 
             if (string.IsNullOrWhiteSpace(message)) return;
             if (!string.IsNullOrEmpty(Validate())) return;
@@ -180,9 +259,11 @@ namespace DebugCommandExecutor.Editor
 
             SaveHistory(message);
 
-            _message = string.Empty;
+            _text = string.Empty;
             _focusHistory = -1;
             _historyScrollPosition = Vector2.zero;
+            _autoCompleteMethods = new List<DebugCommand.DebugMethod>();
+            _focusAutocomplete = -1;
         }
 
         private string ValidateSendToEditor()

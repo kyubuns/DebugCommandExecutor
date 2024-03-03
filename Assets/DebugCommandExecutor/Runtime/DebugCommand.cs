@@ -13,7 +13,7 @@ namespace DebugCommandExecutor
     public static class DebugCommand
     {
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
-        private static readonly IReadOnlyDictionary<string, DebugMethod> DebugMethods;
+        public static readonly IReadOnlyDictionary<string, DebugMethod> DebugMethods;
 
         static DebugCommand()
         {
@@ -118,7 +118,7 @@ namespace DebugCommandExecutor
             return result.ToArray();
         }
 
-        private class DebugMethod
+        public class DebugMethod
         {
             public MethodInfo MethodInfo { get; }
             public DebugCommandAttribute Attribute { get; }
