@@ -44,7 +44,7 @@ namespace DebugCommandExecutor
             var parameterInfos = debugMethod.MethodInfo.GetParameters();
             if (parameterInfos.Length != input.Length - 1)
             {
-                UnityEngine.Debug.LogWarning($"DebugCommand | DebugCommand({debugMethod.MethodInfo.Name}) needs {parameterInfos.Length} parameters ({string.Join(", ", parameterInfos.Select(x => $"{x.ParameterType.Name} {x.Name}"))})\ninput: {text}");
+                UnityEngine.Debug.LogWarning($"DebugCommand | DebugCommand({debugMethod.MethodInfo.Name}) needs {parameterInfos.Length} parameters ({string.Join(", ", parameterInfos.Select(x => $"{x.ParameterType.GetFriendlyName()} {x.Name}"))})\ninput: {text}");
                 return;
             }
 
@@ -75,11 +75,11 @@ namespace DebugCommandExecutor
                 }
                 catch (FormatException formatException)
                 {
-                    UnityEngine.Debug.LogWarning($"DebugCommand | Parse Error \"{value}\" to {targetType.Name} ({formatException.Message})\ninput: {text}");
+                    UnityEngine.Debug.LogWarning($"DebugCommand | Parse Error \"{value}\" to {targetType.GetFriendlyName()} ({formatException.Message})\ninput: {text}");
                 }
                 catch (InvalidCastException invalidCastException)
                 {
-                    UnityEngine.Debug.LogWarning($"DebugCommand | Parse Error \"{value}\" to {targetType.Name} ({invalidCastException.Message})\ninput: {text}");
+                    UnityEngine.Debug.LogWarning($"DebugCommand | Parse Error \"{value}\" to {targetType.GetFriendlyName()} ({invalidCastException.Message})\ninput: {text}");
                 }
             }
 
