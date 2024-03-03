@@ -1,7 +1,7 @@
 DebugCommandExecutor
 ===
 
-WIP
+https://github.com/kyubuns/DebugCommandExecutor/assets/961165/d8955c04-834f-49f7-8c19-d8016fe6b10e
 
 ```csharp
 [DebugCommand("Echo text")]
