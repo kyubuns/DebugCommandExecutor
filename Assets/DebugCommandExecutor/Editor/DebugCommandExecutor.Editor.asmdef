@@ -1,0 +1,18 @@
+{
+    "name": "DebugCommandExecutor.Editor",
+    "rootNamespace": "",
+    "references": [
+        "GUID:2c01821558eaa47c38a9eda194b0e932"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

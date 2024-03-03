@@ -1,0 +1,15 @@
+{
+  "name": "dev.kyubuns.debugcommandexecutor",
+  "displayName": "DebugCommandExecutor",
+  "version": "0.1.0",
+  "description": "DebugCommandExecutor",
+  "unity": "2022.3",
+  "documentationUrl": "https://github.com/kyubuns/DebugCommandExecutor",
+  "dependencies": {
+  },
+  "author": {
+    "name": "kyubuns",
+    "email": "kyubuns@gmail.com",
+    "url": "https://kyubuns.dev/"
+  }
+}
