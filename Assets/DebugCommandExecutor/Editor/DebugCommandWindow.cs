@@ -17,6 +17,7 @@ namespace DebugCommandExecutor.Editor
 
         private int _recipient;
         private string _message;
+        private bool _refocus;
 
         private void OnEnable()
         {
@@ -31,7 +32,15 @@ namespace DebugCommandExecutor.Editor
         private void OnGUI()
         {
             _recipient = EditorGUILayout.Popup(_recipient, new[] { "Editor", "Player" });
-            _message = EditorGUILayout.TextField("Message:", _message);
+
+            GUI.SetNextControlName("MessageTextField");
+            _message = EditorGUILayout.TextField(_message);
+
+            if (_refocus)
+            {
+                GUI.FocusControl("MessageTextField");
+                _refocus = false;
+            }
 
             if (_recipient == 0)
             {
@@ -39,14 +48,14 @@ namespace DebugCommandExecutor.Editor
                 {
                     if (GUILayout.Button("Send to Editor"))
                     {
-                        SendToEditor(_message);
+                        Send();
                     }
                 }
                 else
                 {
                     using (_ = new EditorGUI.DisabledGroupScope(true))
                     {
-                        GUILayout.Button("Send to Editor (Not playing)");
+                        GUILayout.Button("Send to Editor (not playing)");
                     }
                 }
             }
@@ -57,41 +66,67 @@ namespace DebugCommandExecutor.Editor
                 {
                     if (GUILayout.Button($"Send to Player ({string.Join(", ", connection.ConnectedPlayers.Select(x => x.name))})"))
                     {
-                        SendToPlayer(_message);
+                        Send();
                     }
                 }
                 else
                 {
                     using (_ = new EditorGUI.DisabledGroupScope(true))
                     {
-                        GUILayout.Button("Send to Player (ConnectedPlayers.Count == 0)");
+                        GUILayout.Button("Send to Player (no players)");
                     }
                 }
             }
+
+            var e = Event.current;
+            if ((e.control || e.command) && e.type == EventType.KeyDown && e.keyCode == KeyCode.Return)
+            {
+                Send();
+                e.Use();
+            }
         }
 
-        private void SendToPlayer(string message)
+        private void Send()
+        {
+            if (string.IsNullOrWhiteSpace(_message)) return;
+
+            bool used;
+            if (_recipient == 0)
+            {
+                used = SendToEditor(_message);
+            }
+            else
+            {
+                used = SendToPlayer(_message);
+            }
+
+            if (used)
+            {
+                _message = string.Empty;
+                _refocus = true;
+                GUI.FocusControl(null); // 一回フォーカスを外さないとTextAreaが正しくリセットされない
+                Repaint();
+            }
+        }
+
+        private static bool SendToPlayer(string message)
         {
             var connection = EditorConnection.instance;
-            if (connection.ConnectedPlayers.Count == 0)
-            {
-                Debug.LogWarning($"DebugCommand | connection.ConnectedPlayers.Count == 0");
-                return;
-            }
+            if (connection.ConnectedPlayers.Count == 0) return false;
 
             var bytes = System.Text.Encoding.UTF8.GetBytes(message);
             connection.Send(RemoteExecutor.DebugCommandMessage, bytes);
+
+            return true;
         }
 
-        private void SendToEditor(string message)
+        private static bool SendToEditor(string message)
         {
-            if (!Application.isPlaying)
-            {
-                Debug.LogWarning($"DebugCommand | !Application.isPlaying");
-                return;
-            }
+            if (!Application.isPlaying) return false;
 
             DebugCommand.Execute(message);
+
+            return true;
         }
     }
 }
