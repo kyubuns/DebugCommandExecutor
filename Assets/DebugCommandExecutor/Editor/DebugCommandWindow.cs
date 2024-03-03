@@ -73,41 +73,53 @@ namespace DebugCommandExecutor.Editor
                 {
                     e.Use();
 
+                    GUI.FocusControl(null);
+                    if (0 <= _focusHistory - 1 && _focusHistory - 1 < _history.Count)
+                    {
+                        _focusHistory -= 1;
+                        _text = _history[_focusHistory];
+                    }
+
+                    _refocusNextFrame = true;
+                }
+                else if (e.type == EventType.KeyDown && e.keyCode == KeyCode.DownArrow)
+                {
+                    e.Use();
+
+                    GUI.FocusControl(null);
                     if (_focusHistory + 1 < _history.Count)
                     {
                         _focusHistory += 1;
+                        _text = _history[_focusHistory];
                     }
 
-                    GUI.FocusControl(null);
-                    _text = _history[_focusHistory];
                     _refocusNextFrame = true;
                 }
 
-                if (e.type == EventType.KeyDown && e.keyCode == KeyCode.DownArrow)
+                if (e.type == EventType.KeyDown && e.keyCode == KeyCode.Tab && e.shift)
                 {
                     e.Use();
 
-                    if (_focusHistory - 1 >= 0)
+                    GUI.FocusControl(null);
+                    if (0 <= _focusAutocomplete - 1 && _focusAutocomplete - 1 < _autoCompleteMethods.Count)
                     {
-                        _focusHistory -= 1;
+                        _focusAutocomplete -= 1;
+                        _text = _autoCompleteMethods[_focusAutocomplete].MethodInfo.Name;
                     }
 
-                    GUI.FocusControl(null);
-                    _text = _history[_focusHistory];
                     _refocusNextFrame = true;
                 }
-
-                if (e.type == EventType.KeyDown && e.keyCode == KeyCode.Tab)
+                else if (e.type == EventType.KeyDown && e.keyCode == KeyCode.Tab)
                 {
                     e.Use();
 
+                    GUI.FocusControl(null);
                     if (_focusAutocomplete + 1 < _autoCompleteMethods.Count)
                     {
                         _focusAutocomplete += 1;
+                        _text = _autoCompleteMethods[_focusAutocomplete].MethodInfo.Name;
                     }
 
-                    GUI.FocusControl(null);
-                    _text = _autoCompleteMethods[_focusAutocomplete].MethodInfo.Name;
                     _refocusNextFrame = true;
                 }
             }
