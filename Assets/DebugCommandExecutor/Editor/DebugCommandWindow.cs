@@ -28,7 +28,6 @@ namespace DebugCommandExecutor.Editor
         private int _focusHistory = -1;
         private int _focusAutocomplete = -1;
         private Vector2 _autocompleteScrollPosition;
-        private Vector2 _historyScrollPosition;
         private IReadOnlyList<DebugCommand.DebugMethod> _autoCompleteMethods = new List<DebugCommand.DebugMethod>();
 
         protected void OnEnable()
@@ -52,15 +51,21 @@ namespace DebugCommandExecutor.Editor
         {
             var targetButtonStyle = new GUIStyle(GUI.skin.button)
             {
-                fontSize = 16,
-                fixedHeight = 22,
+                fontSize = 18,
+                fixedHeight = 26,
                 fixedWidth = 80,
             };
 
             var messageTextFieldStyle = new GUIStyle(EditorStyles.textField)
             {
-                fontSize = 16,
-                fixedHeight = 22,
+                fontSize = 18,
+                fixedHeight = 26,
+            };
+
+            var autocompleteButtonStyle = new GUIStyle(GUI.skin.button)
+            {
+                fontSize = 14,
+                fixedHeight = 20,
             };
 
             var refocus = false;
@@ -83,7 +88,7 @@ namespace DebugCommandExecutor.Editor
                     refocus = true;
                 }
 
-                if (e.type == EventType.KeyDown && e.keyCode == KeyCode.UpArrow)
+                if (e.type == EventType.KeyDown && e.keyCode == KeyCode.DownArrow)
                 {
                     e.Use();
 
@@ -96,7 +101,7 @@ namespace DebugCommandExecutor.Editor
 
                     _refocusNextFrame = true;
                 }
-                else if (e.type == EventType.KeyDown && e.keyCode == KeyCode.DownArrow)
+                else if (e.type == EventType.KeyDown && e.keyCode == KeyCode.UpArrow)
                 {
                     e.Use();
 
@@ -150,36 +155,36 @@ namespace DebugCommandExecutor.Editor
                 {
                     _recipient = GUILayout.SelectionGrid(_recipient, new[] { "Editor", "Player" }, 2, targetButtonStyle);
 
+                    var prevText = _text;
                     if (string.IsNullOrEmpty(validate))
                     {
-                        var prevText = _text;
                         GUI.SetNextControlName("MessageTextField");
                         _text = EditorGUILayout.TextField(_text, messageTextFieldStyle);
-
-                        if (_text != prevText)
-                        {
-                            _focusHistory = -1;
-                            _focusAutocomplete = -1;
-                            _autoCompleteMethods = UpdateAutoComplete(_text);
-                            _focusAutocomplete = -1;
-                        }
                     }
                     else
                     {
                         GUI.FocusControl(null);
+                        _text = string.Empty;
                         using (new EditorGUI.DisabledGroupScope(true))
                         {
                             EditorGUILayout.TextField(validate, messageTextFieldStyle);
                         }
                     }
-                }
 
-                EditorGUILayout.Space();
+                    if (_text != prevText)
+                    {
+                        _focusHistory = -1;
+                        _focusAutocomplete = -1;
+                        _autoCompleteMethods = UpdateAutoComplete(_text);
+                        _focusAutocomplete = -1;
+                    }
+                }
 
                 if (_autoCompleteMethods.Count > 0)
                 {
+                    EditorGUILayout.Space();
+
                     // AutoComplete
-                    EditorGUILayout.LabelField("Autocomplete");
                     using (var scrollView = new EditorGUILayout.ScrollViewScope(_autocompleteScrollPosition))
                     {
                         for (var i = 0; i < _autoCompleteMethods.Count; i++)
@@ -196,7 +201,7 @@ namespace DebugCommandExecutor.Editor
                                 text += $" - {autoCompleteMethod.Attribute.Summary}";
                             }
 
-                            if (GUILayout.Button(text))
+                            if (GUILayout.Button(text, autocompleteButtonStyle))
                             {
                                 GUI.FocusControl(null);
                                 _text = methodName + (parameterInfos.Length > 0 ? " " : "");
@@ -205,27 +210,6 @@ namespace DebugCommandExecutor.Editor
                         }
 
                         _autocompleteScrollPosition = scrollView.scrollPosition;
-                    }
-                }
-                else
-                {
-                    // History
-                    EditorGUILayout.LabelField("History");
-                    using (var scrollView = new EditorGUILayout.ScrollViewScope(_historyScrollPosition))
-                    {
-                        for (var i = 0; i < _history.Count; i++)
-                        {
-                            var history = _history[i];
-                            if (GUILayout.Button(history))
-                            {
-                                GUI.FocusControl(null);
-                                _text = history;
-                                _refocusNextFrame = true;
-                                _focusHistory = i;
-                            }
-                        }
-
-                        _historyScrollPosition = scrollView.scrollPosition;
                     }
                 }
             }
@@ -290,7 +274,6 @@ namespace DebugCommandExecutor.Editor
 
             _text = string.Empty;
             _focusHistory = -1;
-            _historyScrollPosition = Vector2.zero;
             _autoCompleteMethods = new List<DebugCommand.DebugMethod>();
             _focusAutocomplete = -1;
         }

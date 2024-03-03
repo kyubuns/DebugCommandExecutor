@@ -83,7 +83,14 @@ namespace DebugCommandExecutor
                 }
             }
 
-            debugMethod.MethodInfo.Invoke(null, convertedArguments);
+            try
+            {
+                debugMethod.MethodInfo.Invoke(null, convertedArguments);
+            }
+            catch (Exception e)
+            {
+                UnityEngine.Debug.LogException(e);
+            }
         }
 
         private static string[] ParseString(string input)
