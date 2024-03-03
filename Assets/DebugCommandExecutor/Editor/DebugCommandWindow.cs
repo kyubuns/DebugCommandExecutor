@@ -216,7 +216,6 @@ namespace DebugCommandExecutor.Editor
         private static IReadOnlyList<DebugCommand.DebugMethod> UpdateAutoComplete(string text)
         {
             var methodName = text.Split(' ')[0].Trim().ToLowerInvariant();
-            Debug.Log($"{methodName}");
 
             if (methodName.Length < AutocompleteMinLength)
             {
