@@ -64,7 +64,7 @@ namespace DebugCommandExecutor
                             continue;
                         }
 
-                        if (Enum.TryParse(targetType, value, out var enumValue))
+                        if (Enum.TryParse(targetType, value, true, out var enumValue))
                         {
                             convertedArguments[i] = enumValue;
                             continue;

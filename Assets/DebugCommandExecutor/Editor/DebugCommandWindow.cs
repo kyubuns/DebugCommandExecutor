@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEditor;
@@ -29,6 +30,7 @@ namespace DebugCommandExecutor.Editor
         private int _focusAutocomplete = -1;
         private Vector2 _autocompleteScrollPosition;
         private IReadOnlyList<DebugCommand.DebugMethod> _autoCompleteMethods = new List<DebugCommand.DebugMethod>();
+        private string _inputMethodName;
 
         protected void OnEnable()
         {
@@ -51,21 +53,28 @@ namespace DebugCommandExecutor.Editor
         {
             var targetButtonStyle = new GUIStyle(GUI.skin.button)
             {
-                fontSize = 18,
+                fontSize = 16,
                 fixedHeight = 26,
                 fixedWidth = 80,
             };
 
             var messageTextFieldStyle = new GUIStyle(EditorStyles.textField)
             {
-                fontSize = 18,
+                fontSize = 16,
                 fixedHeight = 26,
             };
 
             var autocompleteButtonStyle = new GUIStyle(GUI.skin.button)
             {
-                fontSize = 14,
+                fontSize = 12,
                 fixedHeight = 20,
+            };
+
+            var autocompleteSelectingButtonStyle = new GUIStyle(GUI.skin.button)
+            {
+                fontSize = 12,
+                fixedHeight = 20,
+                fontStyle = FontStyle.Bold,
             };
 
             var refocus = false;
@@ -150,16 +159,22 @@ namespace DebugCommandExecutor.Editor
             // gui
             {
                 var validate = Validate();
+                var prevText = _text;
 
                 using (new EditorGUILayout.HorizontalScope())
                 {
                     _recipient = GUILayout.SelectionGrid(_recipient, new[] { "Editor", "Player" }, 2, targetButtonStyle);
 
-                    var prevText = _text;
                     if (string.IsNullOrEmpty(validate))
                     {
+                        var userPrevInput = _text;
                         GUI.SetNextControlName("MessageTextField");
                         _text = EditorGUILayout.TextField(_text, messageTextFieldStyle);
+                        if (_text != userPrevInput)
+                        {
+                            _focusHistory = -1;
+                            _focusAutocomplete = -1;
+                        }
                     }
                     else
                     {
@@ -170,14 +185,12 @@ namespace DebugCommandExecutor.Editor
                             EditorGUILayout.TextField(validate, messageTextFieldStyle);
                         }
                     }
+                }
 
-                    if (_text != prevText)
-                    {
-                        _focusHistory = -1;
-                        _focusAutocomplete = -1;
-                        _autoCompleteMethods = UpdateAutoComplete(_text);
-                        _focusAutocomplete = -1;
-                    }
+                if (_text != prevText)
+                {
+                    _autoCompleteMethods = UpdateAutoComplete(_text);
+                    _inputMethodName = _text.Split(' ')[0].ToLowerInvariant();
                 }
 
                 if (_autoCompleteMethods.Count > 0)
@@ -201,7 +214,8 @@ namespace DebugCommandExecutor.Editor
                                 text += $" - {autoCompleteMethod.Attribute.Summary}";
                             }
 
-                            if (GUILayout.Button(text, autocompleteButtonStyle))
+                            var isFocused = (i == _focusAutocomplete) || (_focusAutocomplete == -1 && string.Equals(methodName, _inputMethodName, StringComparison.InvariantCultureIgnoreCase));
+                            if (GUILayout.Button(text, isFocused ? autocompleteSelectingButtonStyle : autocompleteButtonStyle))
                             {
                                 GUI.FocusControl(null);
                                 _text = methodName + (parameterInfos.Length > 0 ? " " : "");
