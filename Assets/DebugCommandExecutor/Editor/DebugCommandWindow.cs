@@ -31,7 +31,7 @@ namespace DebugCommandExecutor.Editor
 
         private void OnGUI()
         {
-            _recipient = EditorGUILayout.Popup(_recipient, new[] { "Editor", "Player" });
+            _recipient = GUILayout.SelectionGrid(_recipient, new[] { "Editor", "Player" }, 2);
 
             GUI.SetNextControlName("MessageTextField");
             _message = EditorGUILayout.TextField(_message);
