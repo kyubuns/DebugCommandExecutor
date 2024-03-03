@@ -25,9 +25,12 @@ public static void Add(int a, int b)
 
 Tools > Debug Command Executor > Window
 
+## Note
+
+- UNITY_EDITOR or DEVELOPMENT_BUILD only.
+
 ## ToDo
 
-- [ ] History
 - [ ] Autocomplete
 
 ## Target Environment
