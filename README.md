@@ -18,3 +18,9 @@ public static void Add(int a, int b)
 ```
 
 `https://github.com/kyubuns/DebugCommandExecutor.git?path=Assets/DebugCommandExecutor`
+
+# ToDo
+
+- [ ] History
+- [ ] Autocomplete
+
