@@ -11,7 +11,7 @@ https://github.com/kyubuns/DebugCommandExecutor/assets/961165/3ecae0d5-6cc6-4bfc
 
 - Just define the method with DebugCommandAttributes.
 - Debug commands can be sent to players from Editor on different devices on the same network.
-  - [Attach in the Console Window is the trigger.](https://docs.unity3d.com/ja/2022.3/Manual/Console.html)
+  - [Attach in the Console Window is the trigger.](https://docs.unity3d.com/2022.3/Documentation/Manual/Console.html)
 - Autocomplete (Tab, Shift-Tab)
 - History (UpArrow, DownArrow)
 
