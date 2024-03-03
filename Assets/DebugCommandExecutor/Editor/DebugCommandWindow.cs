@@ -116,6 +116,8 @@ namespace DebugCommandExecutor.Editor
                     }
                 }
 
+                EditorGUILayout.Space();
+
                 using (var scrollView = new EditorGUILayout.ScrollViewScope(_historyScrollPosition))
                 {
                     EditorGUILayout.LabelField("History");
