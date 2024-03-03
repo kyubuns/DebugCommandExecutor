@@ -9,8 +9,10 @@ namespace Sandbox
         {
             DebugCommand.Execute("Echo \"Test Message\"");
             DebugCommand.Execute("SpawnCube");
-            DebugCommand.Execute("SetCubeColor abc 0 0");
+            DebugCommand.Execute("SetCubeColor 255 0 0");
             DebugCommand.Execute("SetCubePosition 1 0 0");
+            DebugCommand.Execute("EchoEnum 2");
+            DebugCommand.Execute("EchoEnum Blue");
         }
     }
 }

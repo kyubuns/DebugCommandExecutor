@@ -49,5 +49,18 @@ namespace Sandbox
 
             Debug.Log($"Set Cube Position ({x}, {y}, {z})");
         }
+
+        [DebugCommand]
+        public static void EchoEnum(TestEnum test)
+        {
+            Debug.Log($"EchoEnum {test}");
+        }
+    }
+
+    public enum TestEnum
+    {
+        Red,
+        Blue,
+        Yellow,
     }
 }

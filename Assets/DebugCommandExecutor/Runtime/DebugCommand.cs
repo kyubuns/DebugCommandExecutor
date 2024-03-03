@@ -1,8 +1,12 @@
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Text;
+#else
+using System.Diagnostics;
+#endif
 
 namespace DebugCommandExecutor
 {
@@ -19,30 +23,29 @@ namespace DebugCommandExecutor
                 .Select(x =>
                 {
                     var attribute = x.GetCustomAttribute<DebugCommandAttribute>();
-                    if (attribute == null) return null;
-                    return new DebugMethod(x, attribute);
+                    return attribute == null ? null : new DebugMethod(x, attribute);
                 })
                 .Where(x => x != null)
                 .ToDictionary(x => x.MethodInfo.Name.ToLowerInvariant(), x => x);
         }
 
-        public static bool Execute(string text)
+        public static void Execute(string text)
         {
             var input = ParseString(text);
-            if (input.Length == 0) return false;
+            if (input.Length == 0) return;
 
             var commandName = input[0].ToLowerInvariant();
             if (!DebugMethods.TryGetValue(commandName, out var debugMethod))
             {
                 UnityEngine.Debug.LogWarning($"DebugCommand | DebugCommand({commandName}) is not found\ninput: {text}");
-                return false;
+                return;
             }
 
             var parameterInfos = debugMethod.MethodInfo.GetParameters();
             if (parameterInfos.Length != input.Length - 1)
             {
                 UnityEngine.Debug.LogWarning($"DebugCommand | DebugCommand({debugMethod.MethodInfo.Name}) needs {parameterInfos.Length} parameters ({string.Join(", ", parameterInfos.Select(x => $"{x.ParameterType.Name} {x.Name}"))})\ninput: {text}");
-                return false;
+                return;
             }
 
             var convertedArguments = new object[parameterInfos.Length];
@@ -50,19 +53,37 @@ namespace DebugCommandExecutor
             {
                 var parameterInfo = parameterInfos[i];
                 var value = input[i + 1];
+                var targetType = parameterInfo.ParameterType;
                 try
                 {
-                    convertedArguments[i] = Convert.ChangeType(value, parameterInfo.ParameterType);
+                    if (targetType.IsEnum)
+                    {
+                        if (int.TryParse(value, out var intValue))
+                        {
+                            convertedArguments[i] = Enum.ToObject(targetType, intValue);
+                            continue;
+                        }
+
+                        if (Enum.TryParse(targetType, value, out var enumValue))
+                        {
+                            convertedArguments[i] = enumValue;
+                            continue;
+                        }
+                    }
+
+                    convertedArguments[i] = Convert.ChangeType(value, targetType);
                 }
-                catch (FormatException e)
+                catch (FormatException formatException)
                 {
-                    UnityEngine.Debug.LogWarning($"DebugCommand | Parse Error \"{value}\" to {parameterInfo.ParameterType.Name} ({e.Message})\ninput: {text}");
+                    UnityEngine.Debug.LogWarning($"DebugCommand | Parse Error \"{value}\" to {targetType.Name} ({formatException.Message})\ninput: {text}");
+                }
+                catch (InvalidCastException invalidCastException)
+                {
+                    UnityEngine.Debug.LogWarning($"DebugCommand | Parse Error \"{value}\" to {targetType.Name} ({invalidCastException.Message})\ninput: {text}");
                 }
             }
 
             debugMethod.MethodInfo.Invoke(null, convertedArguments);
-
-            return true;
         }
 
         private static string[] ParseString(string input)
@@ -109,9 +130,9 @@ namespace DebugCommandExecutor
             }
         }
 #else
+        [Conditional("UNITY_EDITOR"), Conditional("DEVELOPMENT_BUILD")]
         public static void Execute(string text)
         {
-            UnityEngine.Debug.LogWarning("DebugCommand.Execute is called but it's not available in the release build");
         }
 #endif
     }
