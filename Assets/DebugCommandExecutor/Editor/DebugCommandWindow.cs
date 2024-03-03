@@ -21,6 +21,7 @@ namespace DebugCommandExecutor.Editor
         private static string EditorPrefsHistoryKey => $"DebugCommand.{Application.productName}";
 
         private List<string> _history;
+
         private int _recipient;
         private string _text;
         private bool _refocusNextFrame;
@@ -49,6 +50,19 @@ namespace DebugCommandExecutor.Editor
 
         protected void OnGUI()
         {
+            var targetButtonStyle = new GUIStyle(GUI.skin.button)
+            {
+                fontSize = 16,
+                fixedHeight = 22,
+                fixedWidth = 80,
+            };
+
+            var messageTextFieldStyle = new GUIStyle(EditorStyles.textField)
+            {
+                fontSize = 16,
+                fixedHeight = 22,
+            };
+
             var refocus = false;
 
             {
@@ -130,13 +144,13 @@ namespace DebugCommandExecutor.Editor
 
                 using (new EditorGUILayout.HorizontalScope())
                 {
-                    _recipient = GUILayout.SelectionGrid(_recipient, new[] { "Editor", "Player" }, 2, GUILayout.MaxWidth(100));
+                    _recipient = GUILayout.SelectionGrid(_recipient, new[] { "Editor", "Player" }, 2, targetButtonStyle);
 
                     if (string.IsNullOrEmpty(validate))
                     {
                         var prevText = _text;
                         GUI.SetNextControlName("MessageTextField");
-                        _text = EditorGUILayout.TextField(_text);
+                        _text = EditorGUILayout.TextField(_text, messageTextFieldStyle);
 
                         if (_text != prevText)
                         {
@@ -151,7 +165,7 @@ namespace DebugCommandExecutor.Editor
                         GUI.FocusControl(null);
                         using (new EditorGUI.DisabledGroupScope(true))
                         {
-                            EditorGUILayout.TextField(validate);
+                            EditorGUILayout.TextField(validate, messageTextFieldStyle);
                         }
                     }
                 }
