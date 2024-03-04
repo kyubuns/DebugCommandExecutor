@@ -3,7 +3,7 @@ DebugCommandExecutor
 
 `https://github.com/kyubuns/DebugCommandExecutor.git?path=Assets/DebugCommandExecutor`
 
-https://github.com/kyubuns/DebugCommandExecutor/assets/961165/3ecae0d5-6cc6-4bfc-b78a-2ac99280ff80
+https://github.com/kyubuns/DebugCommandExecutor/assets/961165/e88c7f76-1262-43e1-b89a-e96e87b15cd9
 
 ---
 
