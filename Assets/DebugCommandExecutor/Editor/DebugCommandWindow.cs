@@ -161,7 +161,10 @@ namespace DebugCommandExecutor.Editor
 
                     if (Application.isPlaying)
                     {
-                        EditorApplication.ExecuteMenuItem("Window/General/Game");
+                        EditorApplication.delayCall += () =>
+                        {
+                            EditorApplication.ExecuteMenuItem("Window/General/Game");
+                        };
                     }
                 }
             }
