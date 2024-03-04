@@ -17,16 +17,17 @@ namespace DebugCommandExecutor
 
         static DebugCommand()
         {
+            var targetAssemblyName = typeof(DebugCommandAttribute).Assembly.GetName().FullName;
             DebugMethods = AppDomain.CurrentDomain.GetAssemblies()
+                .Where(x => x.GetReferencedAssemblies().Any(y => y.FullName == targetAssemblyName))
                 .SelectMany(x => x.GetTypes())
                 .SelectMany(x => x.GetMethods(BindingFlags.Public | BindingFlags.Static))
-                .Select(x =>
-                {
-                    var attribute = x.GetCustomAttribute<DebugCommandAttribute>();
-                    return attribute == null ? null : new DebugMethod(x, attribute);
-                })
-                .Where(x => x != null)
-                .ToDictionary(x => x.MethodInfo.Name.ToLowerInvariant(), x => x);
+                .Select(x => new { Method = x, Attribute = x.GetCustomAttribute<DebugCommandAttribute>() })
+                .Where(x => x.Attribute != null)
+                .ToDictionary(
+                    x => x.Method.Name.ToLowerInvariant(),
+                    x => new DebugMethod(x.Method, x.Attribute)
+                );
         }
 
         public static void Execute(string text)
