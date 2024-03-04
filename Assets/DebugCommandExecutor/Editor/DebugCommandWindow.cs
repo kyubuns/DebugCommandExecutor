@@ -159,13 +159,7 @@ namespace DebugCommandExecutor.Editor
                 {
                     e.Use();
 
-                    if (Application.isPlaying)
-                    {
-                        EditorApplication.delayCall += () =>
-                        {
-                            EditorApplication.ExecuteMenuItem("Window/General/Game");
-                        };
-                    }
+                    FocusGameWindowIfNeed();
                 }
             }
 
@@ -303,6 +297,19 @@ namespace DebugCommandExecutor.Editor
             _focusHistory = -1;
             _autoCompleteMethods = new List<DebugCommand.DebugMethod>();
             _focusAutocomplete = -1;
+
+            FocusGameWindowIfNeed();
+        }
+
+        private void FocusGameWindowIfNeed()
+        {
+            if (Application.isPlaying && _recipient == 0)
+            {
+                EditorApplication.delayCall += () =>
+                {
+                    EditorApplication.ExecuteMenuItem("Window/General/Game");
+                };
+            }
         }
 
         private string ValidateSendToEditor()
