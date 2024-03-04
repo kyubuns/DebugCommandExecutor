@@ -134,9 +134,9 @@ namespace DebugCommandExecutor.Editor
                     e.Use();
 
                     GUI.FocusControl(null);
-                    if (0 <= _focusAutocomplete - 1 && _focusAutocomplete - 1 < _autoCompleteMethods.Count)
+                    if (_autoCompleteMethods.Count > 0)
                     {
-                        _focusAutocomplete -= 1;
+                        _focusAutocomplete = _focusAutocomplete > 0 ? _focusAutocomplete - 1 : _autoCompleteMethods.Count - 1;
                         var autoCompleteMethod = _autoCompleteMethods[_focusAutocomplete];
                         var parameterInfos = autoCompleteMethod.MethodInfo.GetParameters();
                         _text = autoCompleteMethod.MethodInfo.Name + (parameterInfos.Length > 0 ? " " : "");
@@ -149,9 +149,9 @@ namespace DebugCommandExecutor.Editor
                     e.Use();
 
                     GUI.FocusControl(null);
-                    if (_focusAutocomplete + 1 < _autoCompleteMethods.Count)
+                    if (_autoCompleteMethods.Count > 0)
                     {
-                        _focusAutocomplete += 1;
+                        _focusAutocomplete = _focusAutocomplete + 1 < _autoCompleteMethods.Count ? _focusAutocomplete + 1 : 0;
                         var autoCompleteMethod = _autoCompleteMethods[_focusAutocomplete];
                         var parameterInfos = autoCompleteMethod.MethodInfo.GetParameters();
                         _text = autoCompleteMethod.MethodInfo.Name + (parameterInfos.Length > 0 ? " " : "");
