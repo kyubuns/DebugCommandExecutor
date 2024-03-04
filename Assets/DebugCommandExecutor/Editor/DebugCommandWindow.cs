@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using UnityEditor;
 using UnityEditor.Networking.PlayerConnection;
 using UnityEngine;
@@ -22,6 +23,7 @@ namespace DebugCommandExecutor.Editor
         private static string EditorPrefsHistoryKey => $"DebugCommand.{Application.productName}";
 
         private List<string> _history;
+        private TextEditor _textEditor;
 
         private int _recipient;
         private string _text;
@@ -35,6 +37,9 @@ namespace DebugCommandExecutor.Editor
         protected void OnEnable()
         {
             EditorConnection.instance.Initialize();
+
+            var editorField = typeof(EditorGUI).GetField("s_RecycledEditor", BindingFlags.Static | BindingFlags.NonPublic);
+            _textEditor = editorField?.GetValue(null) as TextEditor;
         }
 
         protected void OnDisable()
@@ -244,6 +249,12 @@ namespace DebugCommandExecutor.Editor
                 else if (refocus)
                 {
                     GUI.FocusControl("MessageTextField");
+
+                    if (_textEditor != null)
+                    {
+                        _textEditor.cursorIndex = _text.Length;
+                        _textEditor.selectIndex = _text.Length;
+                    }
                 }
             }
         }
