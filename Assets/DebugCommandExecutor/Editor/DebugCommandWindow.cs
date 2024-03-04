@@ -154,6 +154,16 @@ namespace DebugCommandExecutor.Editor
 
                     _refocusNextFrame = true;
                 }
+
+                if (e.type == EventType.KeyDown && e.keyCode == KeyCode.Escape)
+                {
+                    e.Use();
+
+                    if (Application.isPlaying)
+                    {
+                        EditorApplication.ExecuteMenuItem("Window/General/Game");
+                    }
+                }
             }
 
             // gui
@@ -328,6 +338,14 @@ namespace DebugCommandExecutor.Editor
             }
 
             EditorPrefs.SetString(EditorPrefsHistoryKey, string.Join("\n", _history));
+        }
+
+        protected void OnFocus()
+        {
+            EditorGUI.FocusTextInControl("MessageTextField");
+
+            _refocusNextFrame = true;
+            Repaint();
         }
     }
 }
