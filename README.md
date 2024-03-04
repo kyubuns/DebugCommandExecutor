@@ -39,6 +39,12 @@ Tools > Debug Command Executor > Window
 
 - `UNITY_EDITOR` or `DEVELOPMENT_BUILD` only.
 
+## Recommend
+
+- By registering shortcuts, you can quickly input debugging commands at any time!
+
+![CleanShot_20240304-134813@2x](https://github.com/kyubuns/DebugCommandExecutor/assets/961165/dd338efd-f618-431d-b8f7-9eaad7b86516)
+
 ## Target Environment
 
 - Unity2022.3 or later
