@@ -202,7 +202,7 @@ namespace DebugCommandExecutor.Editor
                 if (_text != prevText)
                 {
                     _autoCompleteMethods = UpdateAutoComplete(_text);
-                    _inputMethodName = _text.Split(' ')[0].ToLowerInvariant();
+                    _inputMethodName = _text.Split(' ')[0].ToUpperInvariant();
                 }
 
                 if (_autoCompleteMethods.Count > 0)
@@ -261,7 +261,7 @@ namespace DebugCommandExecutor.Editor
 
         private static IReadOnlyList<DebugCommand.DebugMethod> UpdateAutoComplete(string text)
         {
-            var methodName = text.Split(' ')[0].Trim().ToLowerInvariant();
+            var methodName = text.Split(' ')[0].Trim().ToUpperInvariant();
 
             if (methodName.Length < AutocompleteMinLength)
             {

@@ -25,7 +25,7 @@ namespace DebugCommandExecutor
                 .Select(x => new { Method = x, Attribute = x.GetCustomAttribute<DebugCommandAttribute>() })
                 .Where(x => x.Attribute != null)
                 .ToDictionary(
-                    x => x.Method.Name.ToLowerInvariant(),
+                    x => x.Method.Name.ToUpperInvariant(),
                     x => new DebugMethod(x.Method, x.Attribute)
                 );
         }
@@ -35,7 +35,7 @@ namespace DebugCommandExecutor
             var input = ParseString(text);
             if (input.Length == 0) return;
 
-            var commandName = input[0].ToLowerInvariant();
+            var commandName = input[0].ToUpperInvariant();
             if (!DebugMethods.TryGetValue(commandName, out var debugMethod))
             {
                 UnityEngine.Debug.LogWarning($"DebugCommand | DebugCommand({commandName}) is not found\ninput: {text}");
