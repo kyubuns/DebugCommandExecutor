@@ -251,7 +251,7 @@ namespace DebugCommandExecutor.Editor
                 {
                     GUI.FocusControl("MessageTextField");
 
-                    if (_textEditor != null)
+                    if (_textEditor != null && _text != null)
                     {
                         _textEditor.cursorIndex = _text.Length;
                         _textEditor.selectIndex = _text.Length;
