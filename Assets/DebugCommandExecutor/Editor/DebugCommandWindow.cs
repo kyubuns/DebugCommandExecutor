@@ -21,6 +21,7 @@ namespace DebugCommandExecutor.Editor
         private const int HistoryMax = 30;
         private const int AutocompleteMinLength = 2;
         private static string EditorPrefsHistoryKey => $"DebugCommand.{Application.productName}";
+        private static readonly Dictionary<string, IReadOnlyDictionary<string, DebugCommand.DebugMethod>> AutocompleteCache = new(StringComparer.OrdinalIgnoreCase);
 
         private List<string> _history;
         private TextEditor _textEditor;
@@ -202,7 +203,7 @@ namespace DebugCommandExecutor.Editor
                 if (_text != prevText)
                 {
                     _autoCompleteMethods = UpdateAutoComplete(_text);
-                    _inputMethodName = _text.Split(' ')[0].ToUpperInvariant();
+                    _inputMethodName = _text.Split(' ')[0];
                 }
 
                 if (_autoCompleteMethods.Count > 0)
@@ -261,15 +262,34 @@ namespace DebugCommandExecutor.Editor
 
         private static IReadOnlyList<DebugCommand.DebugMethod> UpdateAutoComplete(string text)
         {
-            var methodName = text.Split(' ')[0].Trim().ToUpperInvariant();
+            var methodName = text.Split(' ')[0].Trim();
 
             if (methodName.Length < AutocompleteMinLength)
             {
                 return new List<DebugCommand.DebugMethod>();
             }
 
-            return DebugCommand.DebugMethods
-                .Where(x => x.Key.StartsWith(methodName))
+            var start = methodName.Substring(0, AutocompleteMinLength);
+            if (!AutocompleteCache.TryGetValue(start, out var cache))
+            {
+                cache = DebugCommand.DebugMethods
+                    .Where(x => x.Key.StartsWith(start, StringComparison.OrdinalIgnoreCase))
+                    .ToDictionary(
+                        x => x.Key.Substring(AutocompleteMinLength, x.Key.Length - AutocompleteMinLength),
+                        x => x.Value
+                    );
+
+                AutocompleteCache[start] = cache;
+            }
+
+            if (methodName.Length == AutocompleteMinLength)
+            {
+                return cache.Values.ToList();
+            }
+
+            var remain = methodName.Substring(AutocompleteMinLength, methodName.Length - AutocompleteMinLength);
+            return cache
+                .Where(x => x.Key.StartsWith(remain, StringComparison.OrdinalIgnoreCase))
                 .Select(x => x.Value)
                 .ToList();
         }

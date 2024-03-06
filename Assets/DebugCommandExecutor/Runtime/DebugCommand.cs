@@ -17,17 +17,27 @@ namespace DebugCommandExecutor
 
         static DebugCommand()
         {
-            var targetAssemblyName = typeof(DebugCommandAttribute).Assembly.GetName().FullName;
-            DebugMethods = AppDomain.CurrentDomain.GetAssemblies()
-                .Where(x => x.GetReferencedAssemblies().Any(y => y.FullName == targetAssemblyName))
-                .SelectMany(x => x.GetTypes())
-                .SelectMany(x => x.GetMethods(BindingFlags.Public | BindingFlags.Static))
-                .Select(x => new { Method = x, Attribute = x.GetCustomAttribute<DebugCommandAttribute>() })
-                .Where(x => x.Attribute != null)
-                .ToDictionary(
-                    x => x.Method.Name.ToUpperInvariant(),
-                    x => new DebugMethod(x.Method, x.Attribute)
-                );
+            var targetAssemblyName = typeof(DebugCommandAttribute).Assembly.FullName;
+            var debugMethods = new Dictionary<string, DebugMethod>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
+            {
+                if (!assembly.GetReferencedAssemblies().Any(x => string.Equals(x.FullName, targetAssemblyName, StringComparison.Ordinal))) continue;
+
+                foreach (var type in assembly.GetTypes())
+                {
+                    foreach (var method in type.GetMethods(BindingFlags.Public | BindingFlags.Static))
+                    {
+                        var attribute = method.GetCustomAttribute<DebugCommandAttribute>();
+                        if (attribute == null) continue;
+
+                        var debugMethod = new DebugMethod(method, attribute);
+                        debugMethods[method.Name] = debugMethod;
+                    }
+                }
+            }
+
+            DebugMethods = debugMethods;
         }
 
         public static void Execute(string text)
@@ -35,7 +45,7 @@ namespace DebugCommandExecutor
             var input = ParseString(text);
             if (input.Length == 0) return;
 
-            var commandName = input[0].ToUpperInvariant();
+            var commandName = input[0];
             if (!DebugMethods.TryGetValue(commandName, out var debugMethod))
             {
                 UnityEngine.Debug.LogWarning($"DebugCommand | DebugCommand({commandName}) is not found\ninput: {text}");
