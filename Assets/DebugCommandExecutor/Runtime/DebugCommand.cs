@@ -53,17 +53,26 @@ namespace DebugCommandExecutor
             }
 
             var parameterInfos = debugMethod.MethodInfo.GetParameters();
-            if (parameterInfos.Length != input.Length - 1)
-            {
-                UnityEngine.Debug.LogWarning($"DebugCommand | DebugCommand({debugMethod.MethodInfo.Name}) needs {parameterInfos.Length} parameters ({string.Join(", ", parameterInfos.Select(x => $"{x.ParameterType.GetFriendlyName()} {x.Name}"))})\ninput: {text}");
-                return;
-            }
-
             var convertedArguments = new object[parameterInfos.Length];
             for (var i = 0; i < parameterInfos.Length; i++)
             {
+                string value;
                 var parameterInfo = parameterInfos[i];
-                var value = input[i + 1];
+                if (i + 1 < input.Length)
+                {
+                    value = input[i + 1];
+                }
+                else if (parameterInfo.HasDefaultValue)
+                {
+                    convertedArguments[i] = parameterInfo.DefaultValue;
+                    continue;
+                }
+                else
+                {
+                    UnityEngine.Debug.LogWarning($"DebugCommand | DebugCommand({debugMethod.MethodInfo.Name}) needs {parameterInfos.Length} parameters ({HumanReadableArguments(parameterInfos)})\ninput: {text}");
+                    return;
+                }
+
                 var targetType = parameterInfo.ParameterType;
                 try
                 {
@@ -134,6 +143,21 @@ namespace DebugCommandExecutor
             }
 
             return result.ToArray();
+        }
+
+        public static string HumanReadableArguments(ParameterInfo[] parameterInfos)
+        {
+            return string.Join(", ", parameterInfos.Select(x =>
+            {
+                if (x.HasDefaultValue)
+                {
+                    return $"{x.ParameterType.GetFriendlyName()} {x.Name} = {x.DefaultValue}";
+                }
+                else
+                {
+                    return $"{x.ParameterType.GetFriendlyName()} {x.Name}";
+                }
+            }));
         }
 
         public class DebugMethod

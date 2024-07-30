@@ -218,9 +218,7 @@ namespace DebugCommandExecutor.Editor
                             var autoCompleteMethod = _autoCompleteMethods[i];
                             var methodName = autoCompleteMethod.MethodInfo.Name;
                             var parameterInfos = autoCompleteMethod.MethodInfo.GetParameters();
-                            var text = parameterInfos.Length == 0
-                                ? methodName
-                                : $"{methodName}({string.Join(", ", parameterInfos.Select(x => $"{x.ParameterType.GetFriendlyName()} {x.Name}"))})";
+                            var text = $"{methodName}({DebugCommand.HumanReadableArguments(parameterInfos)})";
 
                             if (!string.IsNullOrEmpty(autoCompleteMethod.Attribute.Summary))
                             {
