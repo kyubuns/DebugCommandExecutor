@@ -21,7 +21,7 @@ namespace DebugCommandExecutor.Editor
         private const int HistoryMax = 30;
         private const int AutocompleteMinLength = 2;
         private static string EditorPrefsHistoryKey => $"DebugCommand.{Application.productName}";
-        private static readonly Dictionary<string, IReadOnlyDictionary<string, DebugCommand.DebugMethod>> AutocompleteCache = new(StringComparer.OrdinalIgnoreCase);
+        private static readonly Dictionary<string, ILookup<string, DebugCommand.DebugMethod>> AutocompleteCache = new(StringComparer.OrdinalIgnoreCase);
 
         private List<string> _history;
         private TextEditor _textEditor;
@@ -271,25 +271,43 @@ namespace DebugCommandExecutor.Editor
             if (!AutocompleteCache.TryGetValue(start, out var cache))
             {
                 cache = DebugCommand.DebugMethods
-                    .Where(x => x.Key.StartsWith(start, StringComparison.OrdinalIgnoreCase))
-                    .ToDictionary(
-                        x => x.Key.Substring(AutocompleteMinLength, x.Key.Length - AutocompleteMinLength),
+                    .Where(x => x.Key.Contains(start, StringComparison.OrdinalIgnoreCase))
+                    .ToLookup(
+                        x => GetSubstringAfter(x.Key, start),
                         x => x.Value
                     );
 
+                var join = string.Join(", ", cache.Select(x => x.Key.ToString()));
+                Debug.Log(start + " -> " + join);
                 AutocompleteCache[start] = cache;
             }
 
             if (methodName.Length == AutocompleteMinLength)
             {
-                return cache.Values.ToList();
+                return Sort(cache);
             }
 
             var remain = methodName.Substring(AutocompleteMinLength, methodName.Length - AutocompleteMinLength);
-            return cache
-                .Where(x => x.Key.StartsWith(remain, StringComparison.OrdinalIgnoreCase))
-                .Select(x => x.Value)
-                .ToList();
+            return Sort(cache.Where(x => x.Key.StartsWith(remain, StringComparison.OrdinalIgnoreCase)));
+
+            IReadOnlyList<DebugCommand.DebugMethod> Sort(IEnumerable<IGrouping<string, DebugCommand.DebugMethod>> elements)
+            {
+                return elements
+                    .SelectMany(x => x)
+                    .OrderBy(x => x.MethodInfo.Name.StartsWith(text, StringComparison.OrdinalIgnoreCase) ? 0 : 1)
+                    .ToList();
+            }
+        }
+
+        private static string GetSubstringAfter(string target, string searchString)
+        {
+            var index = target.IndexOf(searchString, StringComparison.OrdinalIgnoreCase);
+            if (index != -1)
+            {
+                return target.Substring(index + searchString.Length);
+            }
+
+            return string.Empty;
         }
 
         private string Validate()
