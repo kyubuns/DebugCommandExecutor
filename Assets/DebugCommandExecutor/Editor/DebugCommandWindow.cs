@@ -277,8 +277,6 @@ namespace DebugCommandExecutor.Editor
                         x => x.Value
                     );
 
-                var join = string.Join(", ", cache.Select(x => x.Key.ToString()));
-                Debug.Log(start + " -> " + join);
                 AutocompleteCache[start] = cache;
             }
 
