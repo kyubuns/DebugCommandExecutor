@@ -272,6 +272,7 @@ namespace DebugCommandExecutor.Editor
             {
                 cache = DebugCommand.DebugMethods
                     .Where(x => x.Key.Contains(start, StringComparison.OrdinalIgnoreCase))
+                    .SelectMany(x => x.Value.Select(y => (x.Key, Value: y)))
                     .ToLookup(
                         x => GetSubstringAfter(x.Key, start),
                         x => x.Value

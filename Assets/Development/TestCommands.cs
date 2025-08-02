@@ -55,6 +55,20 @@ namespace Sandbox
         {
             Debug.Log($"EchoEnum {test}");
         }
+
+        private static int _hoge;
+
+        [DebugCommand("Set Value")]
+        public static void Hoge(int value)
+        {
+            _hoge = value;
+        }
+
+        [DebugCommand("Show Value")]
+        public static void Hoge()
+        {
+            Debug.Log($"Hoge is {_hoge}");
+        }
     }
 
     public enum TestEnum
