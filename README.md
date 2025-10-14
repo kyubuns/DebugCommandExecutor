@@ -33,7 +33,7 @@ public static void Add(int a, int b)
 
 ## Execute
 
-Tools > Debug Command Executor > Window
+Tools > Debug Command > Window
 
 ## Note
 

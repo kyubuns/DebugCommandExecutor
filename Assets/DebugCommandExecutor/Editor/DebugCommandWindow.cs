@@ -10,7 +10,7 @@ namespace DebugCommandExecutor.Editor
 {
     public class DebugCommandWindow : EditorWindow
     {
-        [MenuItem("Tools/Debug Command Executor/Window")]
+        [MenuItem("Tools/Debug Command/Window")]
         protected static void ShowWindow()
         {
             var window = GetWindow<DebugCommandWindow>();
