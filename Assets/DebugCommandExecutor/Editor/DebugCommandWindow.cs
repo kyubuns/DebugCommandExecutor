@@ -96,8 +96,10 @@ namespace DebugCommandExecutor.Editor
             // event
             {
                 var e = Event.current;
-                if (e.type == EventType.KeyDown && e.keyCode == KeyCode.Return)
+                if (e.type == EventType.KeyUp && e.keyCode == KeyCode.Return)
                 {
+                    e.Use();
+
                     GUI.FocusControl(null);
                     Send();
                     refocus = true;
