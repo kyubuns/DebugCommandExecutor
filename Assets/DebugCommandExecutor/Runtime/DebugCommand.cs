@@ -58,7 +58,31 @@ namespace DebugCommandExecutor
                 return;
             }
 
+            // Find methods with matching parameter count
             var targets = debugMethodList.Where(x => x.MethodInfo.GetParameters().Length == input.Length - 1).ToList();
+
+            // default parameters support
+            if (targets.Count == 0)
+            {
+                targets = debugMethodList.Where(x =>
+                {
+                    var parameterInfos = x.MethodInfo.GetParameters();
+                    if (parameterInfos.Length < input.Length - 1) return false;
+
+                    for (var i = 0; i < input.Length - 1; i++)
+                    {
+                        if (i >= parameterInfos.Length) return false;
+                    }
+
+                    for (var i = input.Length - 1; i < parameterInfos.Length; i++)
+                    {
+                        if (!parameterInfos[i].HasDefaultValue) return false;
+                    }
+
+                    return true;
+                }).ToList();
+            }
+
             if (targets.Count == 0)
             {
                 var debugMethod = debugMethodList[0];
@@ -71,6 +95,7 @@ namespace DebugCommandExecutor
             {
                 var parameterInfos = debugMethod.MethodInfo.GetParameters();
                 var convertedArguments = new object[parameterInfos.Length];
+                var hasError = false;
 
                 for (var i = 0; i < parameterInfos.Length; i++)
                 {
@@ -113,12 +138,18 @@ namespace DebugCommandExecutor
                     catch (FormatException formatException)
                     {
                         UnityEngine.Debug.LogWarning($"DebugCommand | Parse Error \"{value}\" to {targetType.GetFriendlyName()} ({formatException.Message})\ninput: {text}");
+                        hasError = true;
+                        break;
                     }
                     catch (InvalidCastException invalidCastException)
                     {
                         UnityEngine.Debug.LogWarning($"DebugCommand | Parse Error \"{value}\" to {targetType.GetFriendlyName()} ({invalidCastException.Message})\ninput: {text}");
+                        hasError = true;
+                        break;
                     }
                 }
+
+                if (hasError) continue;
 
                 try
                 {
