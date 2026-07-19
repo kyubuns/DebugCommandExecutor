@@ -49,7 +49,7 @@ namespace DebugCommandExecutor
         public static void Execute(string text)
         {
             var input = ParseString(text);
-            if (input.Length == 0) return;
+            if (input.Count == 0) return;
 
             var commandName = input[0];
             if (!DebugMethods.TryGetValue(commandName, out var debugMethodList))
@@ -58,7 +58,7 @@ namespace DebugCommandExecutor
                 return;
             }
 
-            var argumentCount = input.Length - 1;
+            var argumentCount = input.Count - 1;
             var hasTargets = false;
             for (var i = 0; i < debugMethodList.Count; i++)
             {
@@ -87,7 +87,7 @@ namespace DebugCommandExecutor
             UnityEngine.Debug.LogWarning($"DebugCommand | DebugCommand({firstDebugMethod.MethodInfo.Name}) needs {firstParameterInfos.Length} parameters ({HumanReadableArguments(firstParameterInfos)})\ninput: {text}");
         }
 
-        private static bool TryExecute(DebugMethod debugMethod, string[] input, string text)
+        private static bool TryExecute(DebugMethod debugMethod, List<string> input, string text)
         {
             var parameterInfos = debugMethod.ParameterInfos;
             var convertedArguments = parameterInfos.Length == 0 ? null : new object[parameterInfos.Length];
@@ -96,7 +96,7 @@ namespace DebugCommandExecutor
             {
                 string value;
                 var parameterInfo = parameterInfos[i];
-                if (i + 1 < input.Length)
+                if (i + 1 < input.Count)
                 {
                     value = input[i + 1];
                 }
@@ -154,36 +154,65 @@ namespace DebugCommandExecutor
             return true;
         }
 
-        private static string[] ParseString(string input)
+        private static List<string> ParseString(string input)
         {
             var result = new List<string>();
             var inQuotes = false;
-            var currentElement = new StringBuilder();
+            var elementStart = -1;
+            StringBuilder currentElement = null;
 
-            foreach (var c in input)
+            for (var i = 0; i < input.Length; i++)
             {
+                var c = input[i];
                 if (c == '"')
                 {
                     inQuotes = !inQuotes;
+
+                    if (elementStart < 0) continue;
+
+                    if (currentElement == null)
+                    {
+                        currentElement = new StringBuilder();
+                    }
+
+                    currentElement.Append(input, elementStart, i - elementStart);
+                    elementStart = -1;
                 }
                 else if (!inQuotes && char.IsWhiteSpace(c))
                 {
-                    if (currentElement.Length == 0) continue;
-                    result.Add(currentElement.ToString());
-                    currentElement.Clear();
+                    AddCurrentElement(result, input, ref elementStart, i, currentElement);
+                }
+                else if (elementStart < 0)
+                {
+                    elementStart = i;
+                }
+            }
+
+            AddCurrentElement(result, input, ref elementStart, input.Length, currentElement);
+            return result;
+        }
+
+        private static void AddCurrentElement(List<string> result, string input, ref int elementStart, int end, StringBuilder currentElement)
+        {
+            if (elementStart >= 0)
+            {
+                if (currentElement != null && currentElement.Length > 0)
+                {
+                    currentElement.Append(input, elementStart, end - elementStart);
                 }
                 else
                 {
-                    currentElement.Append(c);
+                    result.Add(input.Substring(elementStart, end - elementStart));
+                    elementStart = -1;
+                    return;
                 }
             }
 
-            if (currentElement.Length > 0)
-            {
-                result.Add(currentElement.ToString());
-            }
+            elementStart = -1;
+            if (currentElement == null || currentElement.Length == 0) return;
 
-            return result.ToArray();
+            result.Add(currentElement.ToString());
+            currentElement.Clear();
         }
 
         public static string HumanReadableArguments(ParameterInfo[] parameterInfos)
