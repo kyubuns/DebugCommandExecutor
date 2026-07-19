@@ -23,6 +23,7 @@ namespace DebugCommandExecutor.Editor
         private static string EditorPrefsHistoryKey => $"DebugCommand.{Application.productName}";
         private static readonly string[] RecipientLabels = { "Editor", "Player" };
         private static readonly Dictionary<string, ILookup<string, DebugCommand.DebugMethod>> AutocompleteCache = new(StringComparer.OrdinalIgnoreCase);
+        private static readonly Dictionary<DebugCommand.DebugMethod, GUIContent> AutocompleteContentCache = new();
 
         private List<string> _history;
         private TextEditor _textEditor;
@@ -210,15 +211,10 @@ namespace DebugCommandExecutor.Editor
                         {
                             var autoCompleteMethod = _autoCompleteMethods[i];
                             var methodName = autoCompleteMethod.MethodInfo.Name;
-                            var text = $"{methodName}({autoCompleteMethod.GetHumanReadableArguments()})";
-
-                            if (!string.IsNullOrEmpty(autoCompleteMethod.Attribute.Summary))
-                            {
-                                text += $" - {autoCompleteMethod.Attribute.Summary}";
-                            }
+                            var content = GetAutocompleteContent(autoCompleteMethod);
 
                             var isFocused = (i == _focusAutocomplete) || (_focusAutocomplete == -1 && string.Equals(methodName, _inputMethodName, StringComparison.InvariantCultureIgnoreCase));
-                            if (GUILayout.Button(text, isFocused ? _autocompleteSelectingButtonStyle : _autocompleteButtonStyle))
+                            if (GUILayout.Button(content, isFocused ? _autocompleteSelectingButtonStyle : _autocompleteButtonStyle))
                             {
                                 GUI.FocusControl(null);
                                 _text = methodName + (autoCompleteMethod.ParameterCount > 0 ? " " : "");
@@ -251,6 +247,21 @@ namespace DebugCommandExecutor.Editor
                     }
                 }
             }
+        }
+
+        private static GUIContent GetAutocompleteContent(DebugCommand.DebugMethod debugMethod)
+        {
+            if (AutocompleteContentCache.TryGetValue(debugMethod, out var content)) return content;
+
+            var text = $"{debugMethod.MethodInfo.Name}({debugMethod.GetHumanReadableArguments()})";
+            if (!string.IsNullOrEmpty(debugMethod.Attribute.Summary))
+            {
+                text += $" - {debugMethod.Attribute.Summary}";
+            }
+
+            content = new GUIContent(text);
+            AutocompleteContentCache.Add(debugMethod, content);
+            return content;
         }
 
         private void EnsureGuiStyles()
