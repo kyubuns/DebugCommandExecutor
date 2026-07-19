@@ -21,10 +21,16 @@ namespace DebugCommandExecutor.Editor
         private const int HistoryMax = 30;
         private const int AutocompleteMinLength = 2;
         private static string EditorPrefsHistoryKey => $"DebugCommand.{Application.productName}";
+        private static readonly string[] RecipientLabels = { "Editor", "Player" };
         private static readonly Dictionary<string, ILookup<string, DebugCommand.DebugMethod>> AutocompleteCache = new(StringComparer.OrdinalIgnoreCase);
 
         private List<string> _history;
         private TextEditor _textEditor;
+        private GUISkin _guiStyleSkin;
+        private GUIStyle _targetButtonStyle;
+        private GUIStyle _messageTextFieldStyle;
+        private GUIStyle _autocompleteButtonStyle;
+        private GUIStyle _autocompleteSelectingButtonStyle;
 
         private int _recipient;
         private string _text;
@@ -57,31 +63,7 @@ namespace DebugCommandExecutor.Editor
 
         protected void OnGUI()
         {
-            var targetButtonStyle = new GUIStyle(GUI.skin.button)
-            {
-                fontSize = 16,
-                fixedHeight = 26,
-                fixedWidth = 80,
-            };
-
-            var messageTextFieldStyle = new GUIStyle(EditorStyles.textField)
-            {
-                fontSize = 16,
-                fixedHeight = 26,
-            };
-
-            var autocompleteButtonStyle = new GUIStyle(GUI.skin.button)
-            {
-                fontSize = 12,
-                fixedHeight = 20,
-            };
-
-            var autocompleteSelectingButtonStyle = new GUIStyle(GUI.skin.button)
-            {
-                fontSize = 12,
-                fixedHeight = 20,
-                fontStyle = FontStyle.Bold,
-            };
+            EnsureGuiStyles();
 
             var refocus = false;
 
@@ -174,15 +156,16 @@ namespace DebugCommandExecutor.Editor
                 var validate = Validate();
                 var prevText = _text;
 
-                using (new EditorGUILayout.HorizontalScope())
+                EditorGUILayout.BeginHorizontal();
+                try
                 {
-                    _recipient = GUILayout.SelectionGrid(_recipient, new[] { "Editor", "Player" }, 2, targetButtonStyle);
+                    _recipient = GUILayout.SelectionGrid(_recipient, RecipientLabels, 2, _targetButtonStyle);
 
                     if (string.IsNullOrEmpty(validate))
                     {
                         var userPrevInput = _text;
                         GUI.SetNextControlName("MessageTextField");
-                        _text = EditorGUILayout.TextField(_text, messageTextFieldStyle);
+                        _text = EditorGUILayout.TextField(_text, _messageTextFieldStyle);
                         if (_text != userPrevInput)
                         {
                             _focusHistory = -1;
@@ -193,11 +176,20 @@ namespace DebugCommandExecutor.Editor
                     {
                         GUI.FocusControl(null);
                         _text = string.Empty;
-                        using (new EditorGUI.DisabledGroupScope(true))
+                        EditorGUI.BeginDisabledGroup(true);
+                        try
                         {
-                            EditorGUILayout.TextField(validate, messageTextFieldStyle);
+                            EditorGUILayout.TextField(validate, _messageTextFieldStyle);
+                        }
+                        finally
+                        {
+                            EditorGUI.EndDisabledGroup();
                         }
                     }
+                }
+                finally
+                {
+                    EditorGUILayout.EndHorizontal();
                 }
 
                 if (_text != prevText)
@@ -211,7 +203,8 @@ namespace DebugCommandExecutor.Editor
                     EditorGUILayout.Space();
 
                     // AutoComplete
-                    using (var scrollView = new EditorGUILayout.ScrollViewScope(_autocompleteScrollPosition))
+                    _autocompleteScrollPosition = EditorGUILayout.BeginScrollView(_autocompleteScrollPosition);
+                    try
                     {
                         for (var i = 0; i < _autoCompleteMethods.Count; i++)
                         {
@@ -225,7 +218,7 @@ namespace DebugCommandExecutor.Editor
                             }
 
                             var isFocused = (i == _focusAutocomplete) || (_focusAutocomplete == -1 && string.Equals(methodName, _inputMethodName, StringComparison.InvariantCultureIgnoreCase));
-                            if (GUILayout.Button(text, isFocused ? autocompleteSelectingButtonStyle : autocompleteButtonStyle))
+                            if (GUILayout.Button(text, isFocused ? _autocompleteSelectingButtonStyle : _autocompleteButtonStyle))
                             {
                                 GUI.FocusControl(null);
                                 _text = methodName + (autoCompleteMethod.ParameterCount > 0 ? " " : "");
@@ -233,7 +226,10 @@ namespace DebugCommandExecutor.Editor
                             }
                         }
 
-                        _autocompleteScrollPosition = scrollView.scrollPosition;
+                    }
+                    finally
+                    {
+                        EditorGUILayout.EndScrollView();
                     }
                 }
             }
@@ -255,6 +251,39 @@ namespace DebugCommandExecutor.Editor
                     }
                 }
             }
+        }
+
+        private void EnsureGuiStyles()
+        {
+            var skin = GUI.skin;
+            if (_targetButtonStyle != null && ReferenceEquals(_guiStyleSkin, skin)) return;
+
+            _guiStyleSkin = skin;
+            _targetButtonStyle = new GUIStyle(skin.button)
+            {
+                fontSize = 16,
+                fixedHeight = 26,
+                fixedWidth = 80,
+            };
+
+            _messageTextFieldStyle = new GUIStyle(EditorStyles.textField)
+            {
+                fontSize = 16,
+                fixedHeight = 26,
+            };
+
+            _autocompleteButtonStyle = new GUIStyle(skin.button)
+            {
+                fontSize = 12,
+                fixedHeight = 20,
+            };
+
+            _autocompleteSelectingButtonStyle = new GUIStyle(skin.button)
+            {
+                fontSize = 12,
+                fixedHeight = 20,
+                fontStyle = FontStyle.Bold,
+            };
         }
 
         private static IReadOnlyList<DebugCommand.DebugMethod> UpdateAutoComplete(string text)
