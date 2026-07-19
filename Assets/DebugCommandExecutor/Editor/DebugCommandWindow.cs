@@ -22,7 +22,7 @@ namespace DebugCommandExecutor.Editor
         private const int AutocompleteMinLength = 2;
         private static string EditorPrefsHistoryKey => $"DebugCommand.{Application.productName}";
         private static readonly string[] RecipientLabels = { "Editor", "Player" };
-        private static readonly Dictionary<string, ILookup<string, DebugCommand.DebugMethod>> AutocompleteCache = new(StringComparer.OrdinalIgnoreCase);
+        private static readonly Dictionary<string, AutocompleteIndex> AutocompleteCache = new(StringComparer.OrdinalIgnoreCase);
         private static readonly Dictionary<DebugCommand.DebugMethod, GUIContent> AutocompleteContentCache = new();
 
         private List<string> _history;
@@ -39,7 +39,7 @@ namespace DebugCommandExecutor.Editor
         private int _focusHistory = -1;
         private int _focusAutocomplete = -1;
         private Vector2 _autocompleteScrollPosition;
-        private IReadOnlyList<DebugCommand.DebugMethod> _autoCompleteMethods = new List<DebugCommand.DebugMethod>();
+        private readonly List<DebugCommand.DebugMethod> _autoCompleteMethods = new();
         private string _inputMethodName;
 
         protected void OnEnable()
@@ -195,8 +195,7 @@ namespace DebugCommandExecutor.Editor
 
                 if (_text != prevText)
                 {
-                    _autoCompleteMethods = UpdateAutoComplete(_text);
-                    _inputMethodName = _text.Split(' ')[0];
+                    _inputMethodName = UpdateAutoComplete(_text, _autoCompleteMethods);
                 }
 
                 if (_autoCompleteMethods.Count > 0)
@@ -297,44 +296,76 @@ namespace DebugCommandExecutor.Editor
             };
         }
 
-        private static IReadOnlyList<DebugCommand.DebugMethod> UpdateAutoComplete(string text)
+        private static string UpdateAutoComplete(string text, List<DebugCommand.DebugMethod> result)
         {
-            var methodName = text.Split(' ')[0].Trim();
+            result.Clear();
+
+            var inputMethodName = GetTextBeforeFirstSpace(text);
+            var methodName = inputMethodName.Trim();
 
             if (methodName.Length < AutocompleteMinLength)
             {
-                return new List<DebugCommand.DebugMethod>();
+                return inputMethodName;
             }
 
             var start = methodName.Substring(0, AutocompleteMinLength);
             if (!AutocompleteCache.TryGetValue(start, out var cache))
             {
-                cache = DebugCommand.DebugMethods
-                    .Where(x => x.Key.Contains(start, StringComparison.OrdinalIgnoreCase))
-                    .SelectMany(x => x.Value.Select(y => (x.Key, Value: y)))
-                    .ToLookup(
-                        x => GetSubstringAfter(x.Key, start),
-                        x => x.Value
-                    );
+                cache = CreateAutocompleteIndex(start);
 
                 AutocompleteCache[start] = cache;
             }
 
-            if (methodName.Length == AutocompleteMinLength)
+            AddAutocompleteMethods(cache, methodName, text, true, result);
+            AddAutocompleteMethods(cache, methodName, text, false, result);
+            return inputMethodName;
+        }
+
+        private static void AddAutocompleteMethods(AutocompleteIndex index, string methodName, string text, bool startsWithText, List<DebugCommand.DebugMethod> result)
+        {
+            for (var groupIndex = 0; groupIndex < index.Groups.Count; groupIndex++)
             {
-                return Sort(cache);
+                var group = index.Groups[groupIndex];
+                if (methodName.Length > AutocompleteMinLength && !StartsWithRemainingName(group.RemainingName, methodName)) continue;
+
+                for (var methodIndex = 0; methodIndex < group.Methods.Count; methodIndex++)
+                {
+                    var method = group.Methods[methodIndex];
+                    if (method.MethodInfo.Name.StartsWith(text, StringComparison.OrdinalIgnoreCase) != startsWithText) continue;
+
+                    result.Add(method);
+                }
+            }
+        }
+
+        private static AutocompleteIndex CreateAutocompleteIndex(string start)
+        {
+            var index = new AutocompleteIndex();
+            foreach (var debugMethods in DebugCommand.DebugMethods)
+            {
+                if (!debugMethods.Key.Contains(start, StringComparison.OrdinalIgnoreCase)) continue;
+
+                var remainingName = GetSubstringAfter(debugMethods.Key, start);
+                for (var i = 0; i < debugMethods.Value.Count; i++)
+                {
+                    index.Add(remainingName, debugMethods.Value[i]);
+                }
             }
 
-            var remain = methodName.Substring(AutocompleteMinLength, methodName.Length - AutocompleteMinLength);
-            return Sort(cache.Where(x => x.Key.StartsWith(remain, StringComparison.OrdinalIgnoreCase)));
+            return index;
+        }
 
-            IReadOnlyList<DebugCommand.DebugMethod> Sort(IEnumerable<IGrouping<string, DebugCommand.DebugMethod>> elements)
-            {
-                return elements
-                    .SelectMany(x => x)
-                    .OrderBy(x => x.MethodInfo.Name.StartsWith(text, StringComparison.OrdinalIgnoreCase) ? 0 : 1)
-                    .ToList();
-            }
+        private static string GetTextBeforeFirstSpace(string text)
+        {
+            var spaceIndex = text.IndexOf(' ');
+            return spaceIndex < 0 ? text : text.Substring(0, spaceIndex);
+        }
+
+        private static bool StartsWithRemainingName(string remainingName, string methodName)
+        {
+            var remainingLength = methodName.Length - AutocompleteMinLength;
+            return remainingName.Length >= remainingLength &&
+                   string.Compare(remainingName, 0, methodName, AutocompleteMinLength, remainingLength, StringComparison.OrdinalIgnoreCase) == 0;
         }
 
         private static string GetSubstringAfter(string target, string searchString)
@@ -346,6 +377,36 @@ namespace DebugCommandExecutor.Editor
             }
 
             return string.Empty;
+        }
+
+        private sealed class AutocompleteIndex
+        {
+            private readonly Dictionary<string, AutocompleteGroup> _groupsByRemainingName = new();
+
+            public List<AutocompleteGroup> Groups { get; } = new();
+
+            public void Add(string remainingName, DebugCommand.DebugMethod method)
+            {
+                if (!_groupsByRemainingName.TryGetValue(remainingName, out var group))
+                {
+                    group = new AutocompleteGroup(remainingName);
+                    _groupsByRemainingName.Add(remainingName, group);
+                    Groups.Add(group);
+                }
+
+                group.Methods.Add(method);
+            }
+        }
+
+        private sealed class AutocompleteGroup
+        {
+            public string RemainingName { get; }
+            public List<DebugCommand.DebugMethod> Methods { get; } = new();
+
+            public AutocompleteGroup(string remainingName)
+            {
+                RemainingName = remainingName;
+            }
         }
 
         private string Validate()
@@ -380,7 +441,7 @@ namespace DebugCommandExecutor.Editor
 
             _text = string.Empty;
             _focusHistory = -1;
-            _autoCompleteMethods = new List<DebugCommand.DebugMethod>();
+            _autoCompleteMethods.Clear();
             _focusAutocomplete = -1;
 
             FocusGameWindowIfNeed();
