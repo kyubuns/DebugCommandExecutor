@@ -59,14 +59,14 @@ namespace DebugCommandExecutor
             }
 
             // Find methods with matching parameter count
-            var targets = debugMethodList.Where(x => x.MethodInfo.GetParameters().Length == input.Length - 1).ToList();
+            var targets = debugMethodList.Where(x => x.ParameterCount == input.Length - 1).ToList();
 
             // default parameters support
             if (targets.Count == 0)
             {
                 targets = debugMethodList.Where(x =>
                 {
-                    var parameterInfos = x.MethodInfo.GetParameters();
+                    var parameterInfos = x.ParameterInfos;
                     if (parameterInfos.Length < input.Length - 1) return false;
 
                     for (var i = 0; i < input.Length - 1; i++)
@@ -86,14 +86,14 @@ namespace DebugCommandExecutor
             if (targets.Count == 0)
             {
                 var debugMethod = debugMethodList[0];
-                var parameterInfos = debugMethod.MethodInfo.GetParameters();
+                var parameterInfos = debugMethod.ParameterInfos;
                 UnityEngine.Debug.LogWarning($"DebugCommand | DebugCommand({debugMethod.MethodInfo.Name}) needs {parameterInfos.Length} parameters ({HumanReadableArguments(parameterInfos)})\ninput: {text}");
                 return;
             }
 
             foreach (var debugMethod in targets)
             {
-                var parameterInfos = debugMethod.MethodInfo.GetParameters();
+                var parameterInfos = debugMethod.ParameterInfos;
                 var convertedArguments = new object[parameterInfos.Length];
                 var hasError = false;
 
@@ -215,11 +215,20 @@ namespace DebugCommandExecutor
         {
             public MethodInfo MethodInfo { get; }
             public DebugCommandAttribute Attribute { get; }
+            public int ParameterCount => ParameterInfos.Length;
+
+            internal ParameterInfo[] ParameterInfos { get; }
 
             public DebugMethod(MethodInfo methodInfo, DebugCommandAttribute attribute)
             {
                 MethodInfo = methodInfo;
                 Attribute = attribute;
+                ParameterInfos = methodInfo.GetParameters();
+            }
+
+            public string GetHumanReadableArguments()
+            {
+                return HumanReadableArguments(ParameterInfos);
             }
         }
 #else

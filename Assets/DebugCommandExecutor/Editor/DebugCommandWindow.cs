@@ -141,8 +141,7 @@ namespace DebugCommandExecutor.Editor
                     {
                         _focusAutocomplete = _focusAutocomplete > 0 ? _focusAutocomplete - 1 : _autoCompleteMethods.Count - 1;
                         var autoCompleteMethod = _autoCompleteMethods[_focusAutocomplete];
-                        var parameterInfos = autoCompleteMethod.MethodInfo.GetParameters();
-                        _text = autoCompleteMethod.MethodInfo.Name + (parameterInfos.Length > 0 ? " " : "");
+                        _text = autoCompleteMethod.MethodInfo.Name + (autoCompleteMethod.ParameterCount > 0 ? " " : "");
                     }
 
                     _refocusNextFrame = true;
@@ -156,8 +155,7 @@ namespace DebugCommandExecutor.Editor
                     {
                         _focusAutocomplete = _focusAutocomplete + 1 < _autoCompleteMethods.Count ? _focusAutocomplete + 1 : 0;
                         var autoCompleteMethod = _autoCompleteMethods[_focusAutocomplete];
-                        var parameterInfos = autoCompleteMethod.MethodInfo.GetParameters();
-                        _text = autoCompleteMethod.MethodInfo.Name + (parameterInfos.Length > 0 ? " " : "");
+                        _text = autoCompleteMethod.MethodInfo.Name + (autoCompleteMethod.ParameterCount > 0 ? " " : "");
                     }
 
                     _refocusNextFrame = true;
@@ -219,8 +217,7 @@ namespace DebugCommandExecutor.Editor
                         {
                             var autoCompleteMethod = _autoCompleteMethods[i];
                             var methodName = autoCompleteMethod.MethodInfo.Name;
-                            var parameterInfos = autoCompleteMethod.MethodInfo.GetParameters();
-                            var text = $"{methodName}({DebugCommand.HumanReadableArguments(parameterInfos)})";
+                            var text = $"{methodName}({autoCompleteMethod.GetHumanReadableArguments()})";
 
                             if (!string.IsNullOrEmpty(autoCompleteMethod.Attribute.Summary))
                             {
@@ -231,7 +228,7 @@ namespace DebugCommandExecutor.Editor
                             if (GUILayout.Button(text, isFocused ? autocompleteSelectingButtonStyle : autocompleteButtonStyle))
                             {
                                 GUI.FocusControl(null);
-                                _text = methodName + (parameterInfos.Length > 0 ? " " : "");
+                                _text = methodName + (autoCompleteMethod.ParameterCount > 0 ? " " : "");
                                 _refocusNextFrame = true;
                             }
                         }
