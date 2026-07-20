@@ -49,7 +49,7 @@ namespace DebugCommandExecutor
         public static void Execute(string text)
         {
             var input = ParseString(text);
-            if (input.Length == 0) return;
+            if (input.Count == 0) return;
 
             var commandName = input[0];
             if (!DebugMethods.TryGetValue(commandName, out var debugMethodList))
@@ -58,142 +58,161 @@ namespace DebugCommandExecutor
                 return;
             }
 
-            // Find methods with matching parameter count
-            var targets = debugMethodList.Where(x => x.MethodInfo.GetParameters().Length == input.Length - 1).ToList();
-
-            // default parameters support
-            if (targets.Count == 0)
+            var argumentCount = input.Count - 1;
+            var hasTargets = false;
+            for (var i = 0; i < debugMethodList.Count; i++)
             {
-                targets = debugMethodList.Where(x =>
-                {
-                    var parameterInfos = x.MethodInfo.GetParameters();
-                    if (parameterInfos.Length < input.Length - 1) return false;
+                var debugMethod = debugMethodList[i];
+                if (debugMethod.ParameterCount != argumentCount) continue;
 
-                    for (var i = 0; i < input.Length - 1; i++)
-                    {
-                        if (i >= parameterInfos.Length) return false;
-                    }
-
-                    for (var i = input.Length - 1; i < parameterInfos.Length; i++)
-                    {
-                        if (!parameterInfos[i].HasDefaultValue) return false;
-                    }
-
-                    return true;
-                }).ToList();
+                hasTargets = true;
+                if (TryExecute(debugMethod, input, text)) return;
             }
 
-            if (targets.Count == 0)
+            if (hasTargets) return;
+
+            for (var i = 0; i < debugMethodList.Count; i++)
             {
-                var debugMethod = debugMethodList[0];
-                var parameterInfos = debugMethod.MethodInfo.GetParameters();
-                UnityEngine.Debug.LogWarning($"DebugCommand | DebugCommand({debugMethod.MethodInfo.Name}) needs {parameterInfos.Length} parameters ({HumanReadableArguments(parameterInfos)})\ninput: {text}");
-                return;
+                var debugMethod = debugMethodList[i];
+                if (!debugMethod.AcceptsArgumentCount(argumentCount)) continue;
+
+                hasTargets = true;
+                if (TryExecute(debugMethod, input, text)) return;
             }
 
-            foreach (var debugMethod in targets)
-            {
-                var parameterInfos = debugMethod.MethodInfo.GetParameters();
-                var convertedArguments = new object[parameterInfos.Length];
-                var hasError = false;
+            if (hasTargets) return;
 
-                for (var i = 0; i < parameterInfos.Length; i++)
-                {
-                    string value;
-                    var parameterInfo = parameterInfos[i];
-                    if (i + 1 < input.Length)
-                    {
-                        value = input[i + 1];
-                    }
-                    else if (parameterInfo.HasDefaultValue)
-                    {
-                        convertedArguments[i] = parameterInfo.DefaultValue;
-                        continue;
-                    }
-                    else
-                    {
-                        throw new ArgumentException($"DebugCommand({debugMethod.MethodInfo.Name}) needs {parameterInfos.Length} parameters ({HumanReadableArguments(parameterInfos)})\ninput: {text}");
-                    }
-
-                    var targetType = parameterInfo.ParameterType;
-                    try
-                    {
-                        if (targetType.IsEnum)
-                        {
-                            if (int.TryParse(value, out var intValue))
-                            {
-                                convertedArguments[i] = Enum.ToObject(targetType, intValue);
-                                continue;
-                            }
-
-                            if (Enum.TryParse(targetType, value, true, out var enumValue))
-                            {
-                                convertedArguments[i] = enumValue;
-                                continue;
-                            }
-                        }
-
-                        convertedArguments[i] = Convert.ChangeType(value, targetType);
-                    }
-                    catch (FormatException formatException)
-                    {
-                        UnityEngine.Debug.LogWarning($"DebugCommand | Parse Error \"{value}\" to {targetType.GetFriendlyName()} ({formatException.Message})\ninput: {text}");
-                        hasError = true;
-                        break;
-                    }
-                    catch (InvalidCastException invalidCastException)
-                    {
-                        UnityEngine.Debug.LogWarning($"DebugCommand | Parse Error \"{value}\" to {targetType.GetFriendlyName()} ({invalidCastException.Message})\ninput: {text}");
-                        hasError = true;
-                        break;
-                    }
-                }
-
-                if (hasError) continue;
-
-                try
-                {
-                    debugMethod.MethodInfo.Invoke(null, convertedArguments);
-                }
-                catch (Exception e)
-                {
-                    UnityEngine.Debug.LogException(e);
-                }
-
-                return;
-            }
+            var firstDebugMethod = debugMethodList[0];
+            var firstParameterInfos = firstDebugMethod.ParameterInfos;
+            UnityEngine.Debug.LogWarning($"DebugCommand | DebugCommand({firstDebugMethod.MethodInfo.Name}) needs {firstParameterInfos.Length} parameters ({HumanReadableArguments(firstParameterInfos)})\ninput: {text}");
         }
 
-        private static string[] ParseString(string input)
+        private static bool TryExecute(DebugMethod debugMethod, List<string> input, string text)
         {
-            var result = new List<string>();
-            var inQuotes = false;
-            var currentElement = new StringBuilder();
+            var parameterInfos = debugMethod.ParameterInfos;
+            var convertedArguments = parameterInfos.Length == 0 ? null : new object[parameterInfos.Length];
 
-            foreach (var c in input)
+            for (var i = 0; i < parameterInfos.Length; i++)
             {
-                if (c == '"')
+                string value;
+                var parameterInfo = parameterInfos[i];
+                if (i + 1 < input.Count)
                 {
-                    inQuotes = !inQuotes;
+                    value = input[i + 1];
                 }
-                else if (!inQuotes && char.IsWhiteSpace(c))
+                else if (parameterInfo.HasDefaultValue)
                 {
-                    if (currentElement.Length == 0) continue;
-                    result.Add(currentElement.ToString());
-                    currentElement.Clear();
+                    convertedArguments[i] = parameterInfo.DefaultValue;
+                    continue;
                 }
                 else
                 {
-                    currentElement.Append(c);
+                    throw new ArgumentException($"DebugCommand({debugMethod.MethodInfo.Name}) needs {parameterInfos.Length} parameters ({HumanReadableArguments(parameterInfos)})\ninput: {text}");
+                }
+
+                var targetType = parameterInfo.ParameterType;
+                try
+                {
+                    if (targetType.IsEnum)
+                    {
+                        if (int.TryParse(value, out var intValue))
+                        {
+                            convertedArguments[i] = Enum.ToObject(targetType, intValue);
+                            continue;
+                        }
+
+                        if (Enum.TryParse(targetType, value, true, out var enumValue))
+                        {
+                            convertedArguments[i] = enumValue;
+                            continue;
+                        }
+                    }
+
+                    convertedArguments[i] = Convert.ChangeType(value, targetType);
+                }
+                catch (FormatException formatException)
+                {
+                    UnityEngine.Debug.LogWarning($"DebugCommand | Parse Error \"{value}\" to {targetType.GetFriendlyName()} ({formatException.Message})\ninput: {text}");
+                    return false;
+                }
+                catch (InvalidCastException invalidCastException)
+                {
+                    UnityEngine.Debug.LogWarning($"DebugCommand | Parse Error \"{value}\" to {targetType.GetFriendlyName()} ({invalidCastException.Message})\ninput: {text}");
+                    return false;
                 }
             }
 
-            if (currentElement.Length > 0)
+            try
             {
-                result.Add(currentElement.ToString());
+                debugMethod.MethodInfo.Invoke(null, convertedArguments);
+            }
+            catch (Exception e)
+            {
+                UnityEngine.Debug.LogException(e);
             }
 
-            return result.ToArray();
+            return true;
+        }
+
+        private static List<string> ParseString(string input)
+        {
+            var result = new List<string>();
+            var inQuotes = false;
+            var elementStart = -1;
+            StringBuilder currentElement = null;
+
+            for (var i = 0; i < input.Length; i++)
+            {
+                var c = input[i];
+                if (c == '"')
+                {
+                    inQuotes = !inQuotes;
+
+                    if (elementStart < 0) continue;
+
+                    if (currentElement == null)
+                    {
+                        currentElement = new StringBuilder();
+                    }
+
+                    currentElement.Append(input, elementStart, i - elementStart);
+                    elementStart = -1;
+                }
+                else if (!inQuotes && char.IsWhiteSpace(c))
+                {
+                    AddCurrentElement(result, input, ref elementStart, i, currentElement);
+                }
+                else if (elementStart < 0)
+                {
+                    elementStart = i;
+                }
+            }
+
+            AddCurrentElement(result, input, ref elementStart, input.Length, currentElement);
+            return result;
+        }
+
+        private static void AddCurrentElement(List<string> result, string input, ref int elementStart, int end, StringBuilder currentElement)
+        {
+            if (elementStart >= 0)
+            {
+                if (currentElement != null && currentElement.Length > 0)
+                {
+                    currentElement.Append(input, elementStart, end - elementStart);
+                }
+                else
+                {
+                    result.Add(input.Substring(elementStart, end - elementStart));
+                    elementStart = -1;
+                    return;
+                }
+            }
+
+            elementStart = -1;
+            if (currentElement == null || currentElement.Length == 0) return;
+
+            result.Add(currentElement.ToString());
+            currentElement.Clear();
         }
 
         public static string HumanReadableArguments(ParameterInfo[] parameterInfos)
@@ -215,11 +234,35 @@ namespace DebugCommandExecutor
         {
             public MethodInfo MethodInfo { get; }
             public DebugCommandAttribute Attribute { get; }
+            public int ParameterCount => ParameterInfos.Length;
+
+            internal ParameterInfo[] ParameterInfos { get; }
+
+            private int RequiredParameterCount { get; }
 
             public DebugMethod(MethodInfo methodInfo, DebugCommandAttribute attribute)
             {
                 MethodInfo = methodInfo;
                 Attribute = attribute;
+                ParameterInfos = methodInfo.GetParameters();
+
+                var requiredParameterCount = ParameterInfos.Length;
+                while (requiredParameterCount > 0 && ParameterInfos[requiredParameterCount - 1].HasDefaultValue)
+                {
+                    requiredParameterCount--;
+                }
+
+                RequiredParameterCount = requiredParameterCount;
+            }
+
+            internal bool AcceptsArgumentCount(int argumentCount)
+            {
+                return RequiredParameterCount <= argumentCount && argumentCount <= ParameterCount;
+            }
+
+            public string GetHumanReadableArguments()
+            {
+                return HumanReadableArguments(ParameterInfos);
             }
         }
 #else
